@@ -97,3 +97,5 @@ if __name__ == "__main__":
     main(root_dir, output_filename, ground_truth_filename)
 
 # to run in terminal: python3 textVectorizer.py
+
+
