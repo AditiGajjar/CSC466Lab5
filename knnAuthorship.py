@@ -9,23 +9,24 @@
 
 # Approach 1: 50-class classification problem. 
 # In this case, you run a single classification task that has a class variable consisting of 50 labels (individual authors).
-
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
 import numpy as np
 import sys
 
 class KNNClassifier():
-    def __init__(self, D, k, similarity_metric): 
+    def __init__(self, D, k, distance_metric): 
         self.D = D
         self.k = k
-        self.distance_metric = similarity_metric # 1 for cosine similarity, 2 for okapi
- 
-    def euclidean_distance(self, a, b):
-        return np.sqrt(np.sum((a - b) ** 2))
-
-    def manhattan_distance(self, a, b):
-        return np.sum(np.abs(a - b))
+        self.distance_metric = distance_metric
+    
+    # document frequency - # of documents in which term ti occurs
+    def doc_freq(matrix):
+        cols = matrix.shape[1]
+        temp = np.zeros(cols)
+        for i in range(cols):
+            temp[i] = np.count_nonzero(matrix[:,i])
+        return temp
 
     def cosine_similarity(self, a, b):
         dot_product = np.dot(a, b)
@@ -34,20 +35,48 @@ class KNNClassifier():
         similarity = dot_product / (norm_a * norm_b)
         return 1 - similarity
 
-    def calculate_distance(self, a, b):
-        if self.distance_metric == 'Euclidean':
-            return self.euclidean_distance(a, b)
-        elif self.distance_metric == 'Manhattan':
-            return self.manhattan_distance(a, b)
-        elif self.distance_metric == 'Cosine similarity':
-            return self.cosine_similarity(a, b)
+    def okapi(self, matrix, dj):
+        # dj is ground truth file
+        rows = matrix.shape[0] # docs
+        cols = matrix.shape[1] # words
+        #distance = np.zeros((rows, rows)) # matrix with all the distances
+        
+        # n = len(matrix)
+        dlj = len(dj) # length of document
+        avdl = len(dj).mean()  # average length of document
+        k1 = 1.5 # usually between 1.0 - 2.0 (normalization parameter for dj)
+        b = 0.75 # usually 0.75 (normalization parameter for doc length)
+        k2 = 500 # usually between 1-1000 (normalization parameter for query q)
+        dfi = self.doc_freq(matrix) # 
 
+        for q in range(rows): # query is each row
+            for j in range(rows):
+                if j != q:
+                    sum = 0
+                    for i in range(cols):
+                        dfi[i]
+                        x = np.log(rows - dfi[i])
+                        y = ((k1 + 1) * matrix[j,i]) / (k1 * (1 - b + (b * (dlj[j]/avdl))))
+                        z = ((k2 + 1)* matrix[q,i]) / (k2 * matrix[q, i])
+                        sum += x * y * z
+                    #distance[q,j] = sum
+        return sum
+
+                    
+
+    def calculate_distance_matrix(self, matrix, distance_metric, gt):
+        rows = matrix.shape[0] # docs
+        cols = matrix.shape[1] # words
+        distance = np.zeros((rows, rows))
+        if self.distance_metric == 'Cosine similarity':
+            for i in range(rows):
+                for j in range(i+1, rows):
+                    return self.cosine_similarity(matrix[i], matrix[j])
+        elif self.distance_metric == 'Okapi':
+            return self.okapi(matrix, gt)
+
+    #old knn
     def knn(self):
-        cate_cols = []
-        for col in list(self.D.columns)[:-1]:
-            if not is_numeric_dtype(self.D[col]):
-                cate_cols.append(col)
-        self.D = pd.get_dummies(self.D, columns=cate_cols, dtype=int)
         class_col = self.D.pop(class_name)
         self.D[class_name] = class_col 
 
@@ -55,10 +84,10 @@ class KNNClassifier():
         file_name = dataset + '_knn.txt'
         with open(file_name, 'w') as file:
             file.write(' '.join(list(D.columns)) + '\n')
-            for i in range(len(self.D)):
+            for i in range(len(self.D)): # rows 
                 file.write(' '.join(map(str, self.D.iloc[i, :-1])) + ' ')
                 distances = {}
-                for j in range(len(self.D)):
+                for j in range(len(self.D)): # cols
                     if i != j:
                         val1 = self.D.iloc[i, :-1]
                         val2 = self.D.iloc[j, :-1]
@@ -98,6 +127,11 @@ class KNNClassifier():
             file.write('\n' + 'Accuracy: ' + str(correct/total) + '\n')
 
 if __name__ == '__main__':
+    # from command line
+    if len(sys.argv) != 3:
+        print('Wrong format')
+        sys.exit(1)
+
     csv_file = sys.argv[1]
     before = csv_file.split('.csv')[0]
     dataset = before.split('/')[-1]
@@ -107,15 +141,9 @@ if __name__ == '__main__':
     k = int(sys.argv[2])
 
     choice = input('Enter distance metric to use for numeric attributes: ')
-    if choice not in ['Euclidean', 'Manhattan', 'Cosine similarity']:
+    if choice not in ['Cosine similarity','Okapi']:
         print('Please choose a valid distance metric')
         sys.exit(1)
 
     classifier = KNNClassifier(D, k, choice)
     classifier.knn()
-    
-# python3 knn.py iris.csv 25 Cosine similarity
-# python3 knn.py heart_new.csv 25 Manhattan
-# python3 knn.py credit.csv 25 Manhattan
-
-# python3 knn.py file flag k

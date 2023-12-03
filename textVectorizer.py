@@ -100,3 +100,6 @@ if __name__ == "__main__":
     main(root_dir, output_filename, ground_truth_filename)
 
 # to run in terminal: python3 textVectorizer.py
+
+#column is every word and rows are each  document(author)
+#knn is similar to these
